@@ -26,6 +26,17 @@ export default function QuestionDisplay({
     }
   };
 
+  // Safety check for question data
+  if (!question || !question.options) {
+    return (
+      <div className="w-full max-w-4xl mx-auto p-4">
+        <div className="bg-red-600/20 border border-red-500 rounded-lg p-6 text-center">
+          <p className="text-red-200 text-lg">Error loading question data</p>
+        </div>
+      </div>
+    );
+  }
+
   // Timer effect
   useEffect(() => {
     setTimeRemaining(timeLimit);
@@ -77,13 +88,14 @@ export default function QuestionDisplay({
   };
 
   const handleImageNavigation = (direction, e) => {
-    // Prevent page scrolling
     if (e) {
       e.preventDefault();
       e.stopPropagation();
     }
     
     const images = question.images || [];
+    if (images.length === 0) return;
+    
     if (direction === 'next') {
       setCurrentImageIndex((prev) => (prev + 1) % images.length);
     } else {
@@ -122,11 +134,13 @@ export default function QuestionDisplay({
   return (
     <div className="w-full max-w-4xl mx-auto p-4 space-y-6">
       {/* Clinical Scenario */}
-      <div className="bg-slate-800/50 backdrop-blur-sm rounded-lg p-4 border border-cyan-500/20">
-        <p className="text-cyan-100 text-lg leading-relaxed">
-          {question.scenario}
-        </p>
-      </div>
+      {question.scenario && (
+        <div className="bg-slate-800/50 backdrop-blur-sm rounded-lg p-4 border border-cyan-500/20">
+          <p className="text-cyan-100 text-lg leading-relaxed">
+            {question.scenario}
+          </p>
+        </div>
+      )}
 
       {/* Image Display with Carousel */}
       {images.length > 0 && (
@@ -224,35 +238,37 @@ export default function QuestionDisplay({
       </div>
 
       {/* Lifelines */}
-      <div className="flex flex-wrap gap-3 justify-center">
-        {lifelines.fiftyFifty.available && (
-          <button
-            onClick={() => onUseLifeline('fiftyFifty')}
-            disabled={lifelines.fiftyFifty.used || isSubmitting}
-            className="px-4 py-2 bg-purple-600/80 hover:bg-purple-500 text-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-purple-400/30"
-          >
-            🎯 50/50
-          </button>
-        )}
-        {lifelines.askAudience.available && (
-          <button
-            onClick={() => onUseLifeline('askAudience')}
-            disabled={lifelines.askAudience.used || isSubmitting}
-            className="px-4 py-2 bg-blue-600/80 hover:bg-blue-500 text-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-blue-400/30"
-          >
-            📊 Ask Audience
-          </button>
-        )}
-        {lifelines.safetyNet.available && (
-          <button
-            onClick={() => onUseLifeline('safetyNet')}
-            disabled={lifelines.safetyNet.used || isSubmitting}
-            className="px-4 py-2 bg-green-600/80 hover:bg-green-500 text-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-green-400/30"
-          >
-            🛡️ Safety Net
-          </button>
-        )}
-      </div>
+      {lifelines && (
+        <div className="flex flex-wrap gap-3 justify-center">
+          {lifelines.fiftyFifty && lifelines.fiftyFifty.available && (
+            <button
+              onClick={() => onUseLifeline('fiftyFifty')}
+              disabled={lifelines.fiftyFifty.used || isSubmitting}
+              className="px-4 py-2 bg-purple-600/80 hover:bg-purple-500 text-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-purple-400/30"
+            >
+              🎯 50/50
+            </button>
+          )}
+          {lifelines.askAudience && lifelines.askAudience.available && (
+            <button
+              onClick={() => onUseLifeline('askAudience')}
+              disabled={lifelines.askAudience.used || isSubmitting}
+              className="px-4 py-2 bg-blue-600/80 hover:bg-blue-500 text-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-blue-400/30"
+            >
+              📊 Ask Audience
+            </button>
+          )}
+          {lifelines.safetyNet && lifelines.safetyNet.available && (
+            <button
+              onClick={() => onUseLifeline('safetyNet')}
+              disabled={lifelines.safetyNet.used || isSubmitting}
+              className="px-4 py-2 bg-green-600/80 hover:bg-green-500 text-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-green-400/30"
+            >
+              🛡️ Safety Net
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Submit and Pass Buttons */}
       <div className="flex gap-4 justify-center">
