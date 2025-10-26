@@ -1,130 +1,128 @@
-import React, { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { getDeviceConfig } from '../utils/deviceCapability'
-import hapticFeedback from '../utils/hapticFeedback'
-import soundManager from '../utils/soundManager'
+import { triggerHaptic } from '../utils/hapticFeedback'
 
-export default function NameEntry({ onSubmit, onBack }) {
+export default function NameEntry({ onSubmit }) {
   const [name, setName] = useState('')
-  const deviceConfig = getDeviceConfig()
+  const [darkMode, setDarkMode] = useState(false)
+
+  useEffect(() => {
+    // Check dark mode from document
+    const isDark = document.documentElement.classList.contains('dark')
+    setDarkMode(isDark)
+
+    // Listen for dark mode changes
+    const observer = new MutationObserver(() => {
+      const isDark = document.documentElement.classList.contains('dark')
+      setDarkMode(isDark)
+    })
+
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    })
+
+    return () => observer.disconnect()
+  }, [])
 
   const handleSubmit = (e) => {
     e.preventDefault()
     if (name.trim()) {
-      hapticFeedback.success()
-      soundManager.click()
+      triggerHaptic('medium')
       onSubmit(name.trim())
     }
   }
 
-  const handleBack = () => {
-    hapticFeedback.light()
-    soundManager.click()
-    onBack()
-  }
-
   return (
-    <div className="min-h-screen relative overflow-hidden">
-      {/* Gradient Background */}
-      <div className={`absolute inset-0 ${
-        deviceConfig.gradientAnimation === true 
-          ? 'bg-gradient-to-br from-game-darker via-game-dark to-game-purple animate-gradient'
-          : deviceConfig.gradientAnimation === 'subtle'
-          ? 'bg-gradient-to-br from-game-darker via-game-dark to-game-purple'
-          : 'bg-game-dark'
-      }`} />
-      
-      <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
-        <motion.div
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ duration: 0.3 }}
-          className="max-w-md w-full"
+    <div className={`min-h-screen flex items-center justify-center px-6 transition-colors duration-500 ${
+      darkMode 
+        ? 'bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900' 
+        : 'bg-gradient-to-br from-blue-50 via-cyan-50 to-blue-50'
+    }`}>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.5 }}
+        className={`w-full max-w-md p-8 rounded-2xl shadow-2xl ${
+          darkMode ? 'bg-slate-800/90 backdrop-blur' : 'bg-white/90 backdrop-blur'
+        }`}
+      >
+        <motion.h2
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className={`text-3xl font-bold text-center mb-6 ${
+            darkMode ? 'text-cyan-400' : 'text-blue-600'
+          }`}
         >
-          {/* Back Button */}
-          <motion.button
-            onClick={handleBack}
-            className="mb-6 text-gray-400 hover:text-neon-cyan flex items-center transition-colors"
-            whileHover={{ x: -5 }}
+          Enter Your Name
+        </motion.h2>
+
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3 }}
+          className={`text-center mb-8 ${
+            darkMode ? 'text-cyan-100' : 'text-slate-600'
+          }`}
+        >
+          Join the ranks of radiology residents
+        </motion.p>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.4 }}
           >
-            ← Back
-          </motion.button>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Your name here..."
+              maxLength={20}
+              className={`w-full px-4 py-3 rounded-lg border-2 transition-all duration-300 focus:outline-none focus:ring-2 ${
+                darkMode
+                  ? 'bg-slate-700 border-slate-600 text-cyan-100 placeholder-slate-400 focus:border-cyan-400 focus:ring-cyan-400/50'
+                  : 'bg-white border-gray-300 text-slate-900 placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500/50'
+              }`}
+              autoFocus
+            />
+          </motion.div>
 
-          {/* Title */}
-          <div className="text-center mb-8">
-            <motion.h1
-              className="text-4xl md:text-5xl font-bold text-neon-cyan mb-2"
-              style={{
-                textShadow: deviceConfig.glowIntensity === 'high'
-                  ? '0 0 20px rgba(0, 229, 255, 0.6), 0 0 40px rgba(0, 229, 255, 0.4)'
-                  : '0 0 10px rgba(0, 153, 255, 0.5)',
-              }}
-            >
-              🪜 RADLADDER 🪜
-            </motion.h1>
-            <motion.p
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="text-xl text-gray-300 mt-4"
-            >
-              Choose Your Codename
-            </motion.p>
-          </div>
-
-          {/* Form */}
-          <motion.form
+          <motion.button
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            onSubmit={handleSubmit}
-            className="space-y-6"
+            transition={{ delay: 0.5 }}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            type="submit"
+            disabled={!name.trim()}
+            className={`w-full py-3 rounded-lg font-bold text-lg transition-all duration-300 ${
+              name.trim()
+                ? darkMode
+                  ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:shadow-lg hover:shadow-cyan-500/50'
+                  : 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white hover:shadow-lg hover:shadow-blue-500/50'
+                : darkMode
+                ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            }`}
           >
-            <div>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                onFocus={() => hapticFeedback.light()}
-                placeholder="Enter name or initials"
-                className="w-full px-4 py-3 text-lg bg-game-dark border-2 border-neon-blue rounded-lg focus:border-neon-cyan focus:outline-none focus:shadow-glow-blue text-white placeholder-gray-500 transition-all"
-                maxLength={50}
-                autoFocus
-              />
-            </div>
+            {name.trim() ? '🚀 Begin Your Journey' : '✏️ Enter Name to Continue'}
+          </motion.button>
+        </form>
 
-            <motion.button
-              type="submit"
-              disabled={!name.trim()}
-              className="w-full bg-gradient-to-r from-neon-blue to-neon-cyan text-white text-xl font-bold py-3 px-6 rounded-lg transition-all shadow-neon disabled:from-gray-600 disabled:to-gray-600 disabled:shadow-none disabled:cursor-not-allowed"
-              whileHover={name.trim() ? { scale: 1.05 } : {}}
-              whileTap={name.trim() ? { scale: 0.95 } : {}}
-            >
-              {name.trim() ? '🚀 START CLIMBING' : 'ENTER NAME TO START'}
-            </motion.button>
-
-            <p className="text-sm text-gray-500 text-center mt-4">
-              Your progress will be saved on the leaderboard
-            </p>
-          </motion.form>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.7 }}
+          className={`mt-6 text-center text-sm ${
+            darkMode ? 'text-cyan-300/60' : 'text-slate-500'
+          }`}
+        >
+          Your progress will be saved to the leaderboard
         </motion.div>
-      </div>
-
-      {/* Animated gradient keyframes */}
-      <style jsx>{`
-        @keyframes gradient {
-          0%, 100% {
-            background-position: 0% 50%;
-          }
-          50% {
-            background-position: 100% 50%;
-          }
-        }
-        .animate-gradient {
-          background-size: 200% 200%;
-          animation: gradient 15s ease infinite;
-        }
-      `}</style>
+      </motion.div>
     </div>
   )
 }
