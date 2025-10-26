@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { triggerHaptic } from '../../utils/hapticFeedback';
 
 export default function QuestionDisplay({ 
   question, 
@@ -14,6 +13,18 @@ export default function QuestionDisplay({
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [timeRemaining, setTimeRemaining] = useState(timeLimit);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Simple haptic feedback function (built-in)
+  const triggerHaptic = (intensity = 'medium') => {
+    if ('vibrate' in navigator) {
+      const patterns = {
+        light: 10,
+        medium: 20,
+        heavy: 50
+      };
+      navigator.vibrate(patterns[intensity] || 20);
+    }
+  };
 
   // Timer effect
   useEffect(() => {
