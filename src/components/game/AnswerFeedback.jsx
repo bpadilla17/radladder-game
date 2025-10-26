@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { triggerHaptic } from '../../utils/hapticFeedback';
 
 export default function AnswerFeedback({ 
   isCorrect, 
@@ -8,6 +7,19 @@ export default function AnswerFeedback({
   onContinue 
 }) {
   const [showConfetti, setShowConfetti] = useState(false);
+
+  // Simple haptic feedback function (built-in)
+  const triggerHaptic = (type = 'medium') => {
+    if ('vibrate' in navigator) {
+      if (type === 'success') {
+        navigator.vibrate([50, 50, 50]); // short-long-short
+      } else if (type === 'error') {
+        navigator.vibrate([100, 50, 100]); // long-pause-long
+      } else {
+        navigator.vibrate(20);
+      }
+    }
+  };
 
   useEffect(() => {
     if (isCorrect) {
