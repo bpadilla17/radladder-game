@@ -12,9 +12,9 @@ export default function AnswerFeedback({
   const triggerHaptic = (type = 'medium') => {
     if ('vibrate' in navigator) {
       if (type === 'success') {
-        navigator.vibrate([50, 50, 50]); // short-long-short
+        navigator.vibrate([50, 50, 50]);
       } else if (type === 'error') {
-        navigator.vibrate([100, 50, 100]); // long-pause-long
+        navigator.vibrate([100, 50, 100]);
       } else {
         navigator.vibrate(20);
       }
@@ -25,7 +25,6 @@ export default function AnswerFeedback({
     if (isCorrect) {
       setShowConfetti(true);
       triggerHaptic('success');
-      // Hide confetti after animation
       setTimeout(() => setShowConfetti(false), 3000);
     } else {
       triggerHaptic('error');
@@ -36,21 +35,38 @@ export default function AnswerFeedback({
     <div className="w-full max-w-4xl mx-auto p-4 space-y-6 relative">
       {/* Simple CSS Confetti */}
       {showConfetti && (
-        <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
-          {[...Array(50)].map((_, i) => (
-            <div
-              key={i}
-              className="confetti-piece"
-              style={{
-                left: `${Math.random() * 100}%`,
-                animationDelay: `${Math.random() * 0.5}s`,
-                backgroundColor: ['#22d3ee', '#3b82f6', '#a855f7', '#ec4899', '#f59e0b'][Math.floor(Math.random() * 5)],
-                '--fall-distance': `${80 + Math.random() * 20}vh`,
-                '--rotation': `${Math.random() * 360}deg`,
-              }}
-            />
-          ))}
-        </div>
+        <>
+          <style>{`
+            @keyframes confetti-fall {
+              to {
+                transform: translateY(100vh) rotate(720deg);
+                opacity: 0;
+              }
+            }
+            .confetti-piece {
+              position: fixed;
+              width: 10px;
+              height: 10px;
+              top: -10px;
+              animation: confetti-fall 3s linear forwards;
+              pointer-events: none;
+              z-index: 9999;
+            }
+          `}</style>
+          <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
+            {[...Array(50)].map((_, i) => (
+              <div
+                key={i}
+                className="confetti-piece"
+                style={{
+                  left: `${Math.random() * 100}%`,
+                  animationDelay: `${Math.random() * 0.5}s`,
+                  backgroundColor: ['#22d3ee', '#3b82f6', '#a855f7', '#ec4899', '#f59e0b'][Math.floor(Math.random() * 5)]
+                }}
+              />
+            ))}
+          </div>
+        </>
       )}
 
       {/* Result Banner */}
@@ -60,7 +76,7 @@ export default function AnswerFeedback({
           : 'bg-gradient-to-r from-red-600 to-rose-600'
       } rounded-lg p-6 text-white shadow-xl border-2 ${
         isCorrect ? 'border-green-400' : 'border-red-400'
-      } ${isCorrect ? '' : 'animate-shake'}`}>
+      }`}>
         <div className="flex items-center justify-center gap-3 mb-2">
           <span className="text-4xl">{isCorrect ? '🎉' : '❌'}</span>
           <h2 className="text-3xl font-bold">
@@ -97,33 +113,6 @@ export default function AnswerFeedback({
           Continue ➡️
         </button>
       </div>
-
-      <style jsx>{`
-        .confetti-piece {
-          position: absolute;
-          width: 10px;
-          height: 10px;
-          top: -10px;
-          animation: confetti-fall 3s linear forwards;
-        }
-
-        @keyframes confetti-fall {
-          to {
-            transform: translateY(var(--fall-distance)) rotate(var(--rotation));
-            opacity: 0;
-          }
-        }
-
-        @keyframes shake {
-          0%, 100% { transform: translateX(0); }
-          10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
-          20%, 40%, 60%, 80% { transform: translateX(5px); }
-        }
-
-        .animate-shake {
-          animation: shake 0.5s ease-in-out;
-        }
-      `}</style>
     </div>
   );
 }
