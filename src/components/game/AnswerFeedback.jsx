@@ -1,16 +1,7 @@
-import React, { useEffect } from 'react'
+import React from 'react'
 
 export default function AnswerFeedback({ feedbackData, onNext }) {
   const { isCorrect, correctAnswer, teachingPoint, newRung, oldRung, timeTaken, points } = feedbackData
-
-  useEffect(() => {
-    // Auto-advance after 7 seconds
-    const timer = setTimeout(() => {
-      onNext()
-    }, 7000)
-
-    return () => clearTimeout(timer)
-  }, [onNext])
 
   const getRungMovement = () => {
     if (newRung > oldRung) {
@@ -75,14 +66,10 @@ export default function AnswerFeedback({ feedbackData, onNext }) {
         {/* Next Button */}
         <button
           onClick={onNext}
-          className="w-full bg-medical-blue text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition-colors"
+          className="w-full bg-medical-blue text-white font-bold py-3 rounded-lg hover:bg-blue-700 active:bg-blue-800 active:scale-95 transition-all"
         >
           NEXT QUESTION →
         </button>
-
-        <p className="text-center text-sm text-gray-500 mt-3">
-          (Auto-advancing in a few seconds...)
-        </p>
       </div>
     </div>
   )
