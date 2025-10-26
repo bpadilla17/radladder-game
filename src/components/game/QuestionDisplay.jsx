@@ -1,242 +1,267 @@
-import React, { useState } from 'react'
-import { motion } from 'framer-motion'
-import hapticFeedback from '../../utils/hapticFeedback'
-import soundManager from '../../utils/soundManager'
+import React, { useState, useEffect } from 'react';
+import { triggerHaptic } from '../../utils/hapticFeedback';
 
-export default function QuestionDisplay({
-  question,
-  timeLeft,
-  totalTime,
-  onAnswer,
-  onPass,
-  onAskAudience,
-  onSafetyNet,
+export default function QuestionDisplay({ 
+  question, 
+  onAnswer, 
+  onPass, 
+  timeLimit,
   passesRemaining,
   lifelines,
-  safetyNetActive
+  onUseLifeline
 }) {
-  const [selectedAnswer, setSelectedAnswer] = useState(null)
-  const [currentImageIndex, setCurrentImageIndex] = useState(0)
+  const [selectedAnswer, setSelectedAnswer] = useState(null);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [timeRemaining, setTimeRemaining] = useState(timeLimit);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Parse image URLs (could be comma-separated for multiple images)
-  const imageUrls = question.image_url ? question.image_url.split(',').map(url => url.trim()) : []
-  const hasMultipleImages = imageUrls.length > 1
+  // Timer effect
+  useEffect(() => {
+    setTimeRemaining(timeLimit);
+    const timer = setInterval(() => {
+      setTimeRemaining(prev => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          handleTimeout();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [question.id, timeLimit]);
+
+  // Reset state when question changes
+  useEffect(() => {
+    setSelectedAnswer(null);
+    setCurrentImageIndex(0);
+    setIsSubmitting(false);
+  }, [question.id]);
+
+  const handleTimeout = () => {
+    if (!isSubmitting) {
+      alert("Time's up! You must answer or pass.");
+    }
+  };
 
   const handleAnswerSelect = (answer) => {
-    setSelectedAnswer(answer)
-    hapticFeedback.medium()
-    soundManager.click()
-  }
+    if (isSubmitting) return;
+    setSelectedAnswer(answer);
+    triggerHaptic('medium');
+  };
 
   const handleSubmit = () => {
-    if (selectedAnswer) {
-      hapticFeedback.heavy()
-      soundManager.click()
-      onAnswer(selectedAnswer)
+    if (!selectedAnswer || isSubmitting) return;
+    setIsSubmitting(true);
+    triggerHaptic('heavy');
+    onAnswer(selectedAnswer);
+  };
+
+  const handlePass = () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    triggerHaptic('medium');
+    onPass();
+  };
+
+  const handleImageNavigation = (direction, e) => {
+    // Prevent page scrolling
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
     }
-  }
+    
+    const images = question.images || [];
+    if (direction === 'next') {
+      setCurrentImageIndex((prev) => (prev + 1) % images.length);
+    } else {
+      setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
+    }
+    triggerHaptic('light');
+  };
 
-  const nextImage = () => {
-    setCurrentImageIndex((prev) => (prev + 1) % imageUrls.length)
-    hapticFeedback.light()
-  }
+  // Handle keyboard navigation without scrolling
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        handleImageNavigation('prev');
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        handleImageNavigation('next');
+      }
+    };
 
-  const prevImage = () => {
-    setCurrentImageIndex((prev) => (prev - 1 + imageUrls.length) % imageUrls.length)
-    hapticFeedback.light()
-  }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [question.images]);
 
-  const goToImage = (index) => {
-    setCurrentImageIndex(index)
-    hapticFeedback.light()
-  }
+  const images = question.images || [];
+  const hasMultipleImages = images.length > 1;
 
-  const timePercentage = (timeLeft / totalTime) * 100
-  const isUrgent = timeLeft <= 10
+  // Timer color based on time remaining
+  const getTimerColor = () => {
+    const percentage = (timeRemaining / timeLimit) * 100;
+    if (percentage > 50) return 'text-cyan-400';
+    if (percentage > 25) return 'text-yellow-400';
+    return 'text-red-400';
+  };
 
   return (
-    <div className="bg-white rounded-lg shadow-lg p-6">
+    <div className="w-full max-w-4xl mx-auto p-4 space-y-6">
       {/* Clinical Scenario */}
-      <div className="mb-4 p-4 bg-blue-50 rounded-lg">
-        <p className="text-gray-800">
-          <strong>Clinical:</strong> {question.clinical_scenario}
+      <div className="bg-slate-800/50 backdrop-blur-sm rounded-lg p-4 border border-cyan-500/20">
+        <p className="text-cyan-100 text-lg leading-relaxed">
+          {question.scenario}
         </p>
       </div>
 
-      {/* Image Display with Carousel Dots */}
-      {imageUrls.length > 0 && (
-        <div className="mb-4">
-          <div className="relative bg-gray-100 rounded-lg overflow-hidden">
-            <motion.img
-              key={currentImageIndex}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.3 }}
-              src={imageUrls[currentImageIndex]}
-              alt={`Case image ${currentImageIndex + 1}`}
-              className="w-full h-auto object-contain"
-              style={{ maxHeight: '450px' }}
-              onError={(e) => {
-                e.target.src = 'https://via.placeholder.com/800x600?text=Image+Not+Found'
-              }}
-            />
-            
-            {/* Image Navigation for Multiple Images */}
+      {/* Image Display with Carousel */}
+      {images.length > 0 && (
+        <div className="bg-slate-800/30 backdrop-blur-sm rounded-lg p-4 border border-cyan-500/20">
+          <div className="relative">
+            {/* Image */}
+            <div className="flex justify-center items-center bg-black/50 rounded-lg overflow-hidden">
+              <img
+                src={images[currentImageIndex]}
+                alt={`Medical image ${currentImageIndex + 1}`}
+                className="max-h-[450px] w-auto object-contain"
+              />
+            </div>
+
+            {/* Navigation Arrows */}
             {hasMultipleImages && (
               <>
                 <button
-                  onClick={prevImage}
-                  className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 active:scale-95 transition-all"
+                  onClick={(e) => handleImageNavigation('prev', e)}
+                  onMouseDown={(e) => e.preventDefault()}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 bg-cyan-600/80 hover:bg-cyan-500 text-white rounded-full p-3 transition-all hover:scale-110 shadow-lg backdrop-blur-sm"
+                  aria-label="Previous image"
                 >
-                  ←
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
                 </button>
                 <button
-                  onClick={nextImage}
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 active:scale-95 transition-all"
+                  onClick={(e) => handleImageNavigation('next', e)}
+                  onMouseDown={(e) => e.preventDefault()}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-cyan-600/80 hover:bg-cyan-500 text-white rounded-full p-3 transition-all hover:scale-110 shadow-lg backdrop-blur-sm"
+                  aria-label="Next image"
                 >
-                  →
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
                 </button>
-                <div className="absolute bottom-2 right-2 bg-black bg-opacity-50 text-white px-3 py-1 rounded-full text-sm">
-                  {currentImageIndex + 1} / {imageUrls.length}
-                </div>
               </>
             )}
+
+            {/* Carousel Dots */}
+            {hasMultipleImages && (
+              <div className="flex justify-center items-center gap-2 mt-4">
+                <span className="text-cyan-300 text-sm mr-2">
+                  {currentImageIndex + 1} / {images.length}
+                </span>
+                {images.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setCurrentImageIndex(index);
+                      triggerHaptic('light');
+                    }}
+                    className={`transition-all ${
+                      index === currentImageIndex
+                        ? 'w-3 h-3 bg-cyan-400 shadow-lg shadow-cyan-400/50'
+                        : 'w-2 h-2 bg-cyan-700/50 hover:bg-cyan-600/70'
+                    } rounded-full`}
+                    aria-label={`Go to image ${index + 1}`}
+                  />
+                ))}
+              </div>
+            )}
           </div>
-          
-          {/* CAROUSEL DOTS instead of thumbnails */}
-          {hasMultipleImages && (
-            <div className="flex justify-center gap-2 mt-3">
-              {imageUrls.map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => goToImage(index)}
-                  className={`transition-all ${
-                    currentImageIndex === index
-                      ? 'w-8 h-2 bg-neon-blue rounded-full'
-                      : 'w-2 h-2 bg-gray-300 rounded-full hover:bg-gray-400'
-                  }`}
-                  aria-label={`Go to image ${index + 1}`}
-                />
-              ))}
-            </div>
-          )}
         </div>
       )}
 
-      {/* Question */}
-      <div className="mb-4">
-        <h3 className="text-xl font-bold text-gray-800 mb-4">{question.question_text}</h3>
-      </div>
-
-      {/* Timer - Repositioned closer to answers */}
-      <div className="mb-4">
-        <div className="flex justify-between items-center mb-2">
-          <span className={`text-lg font-bold ${isUrgent ? 'text-error-red' : 'text-gray-700'}`}>
-            ⏱️ {timeLeft} seconds
-          </span>
-          {safetyNetActive && (
-            <span className="text-sm bg-green-100 text-green-800 px-3 py-1 rounded-full font-semibold">
-              🛡️ SAFETY NET ACTIVE
-            </span>
-          )}
-        </div>
-        <div className="w-full bg-gray-200 rounded-full h-2">
-          <motion.div
-            className={`h-2 rounded-full transition-all ${isUrgent ? 'bg-error-red' : 'bg-neon-blue'}`}
-            style={{ width: `${timePercentage}%` }}
-            animate={isUrgent ? { scale: [1, 1.05, 1] } : {}}
-            transition={isUrgent ? { repeat: Infinity, duration: 0.5 } : {}}
-          />
+      {/* Timer */}
+      <div className="flex justify-center">
+        <div className={`text-2xl font-bold ${getTimerColor()} transition-colors`}>
+          ⏱️ {timeRemaining}s
         </div>
       </div>
 
-      {/* Answer Options - ENHANCED SELECTION (selected highlighted, others dimmed) */}
-      <div className="space-y-3 mb-6">
-        {['A', 'B', 'C', 'D'].map(option => (
-          <motion.button
-            key={option}
-            onClick={() => handleAnswerSelect(option)}
-            className={`w-full text-left p-4 rounded-lg border-2 transition-all relative overflow-hidden ${
-              selectedAnswer === option
-                ? 'border-neon-blue bg-blue-50 shadow-glow-blue'
-                : selectedAnswer
-                ? 'border-gray-200 bg-gray-50 opacity-50'
-                : 'border-gray-300 hover:border-neon-blue hover:bg-blue-50'
-            } hover:shadow-md`}
-            whileHover={{ scale: selectedAnswer && selectedAnswer !== option ? 1 : 1.02 }}
-            whileTap={{ scale: 0.98 }}
+      {/* Answer Options */}
+      <div className="space-y-3">
+        {question.options.map((option) => (
+          <button
+            key={option.id}
+            onClick={() => handleAnswerSelect(option.id)}
+            disabled={isSubmitting}
+            className={`w-full p-4 rounded-lg text-left transition-all transform ${
+              selectedAnswer === option.id
+                ? 'bg-cyan-600 text-white border-2 border-cyan-400 shadow-lg shadow-cyan-500/50 scale-[1.02]'
+                : 'bg-slate-700/50 text-cyan-100 border-2 border-slate-600/50 hover:border-cyan-500/50 opacity-80'
+            } ${isSubmitting ? 'cursor-not-allowed' : 'hover:scale-[1.01] cursor-pointer'}`}
           >
-            <span className="font-bold mr-3">({option})</span>
-            {question[`option_${option.toLowerCase()}`]}
-          </motion.button>
+            <span className="font-semibold mr-2 text-cyan-300">({option.label})</span>
+            <span className={selectedAnswer === option.id ? 'text-white' : 'text-cyan-100'}>
+              {option.text}
+            </span>
+          </button>
         ))}
       </div>
 
-      {/* Action Buttons */}
-      <div className="space-y-3">
-        {/* Submit Button */}
-        <motion.button
-          onClick={handleSubmit}
-          disabled={!selectedAnswer}
-          className="w-full bg-neon-blue text-white font-bold py-3 rounded-lg transition-all relative overflow-hidden hover:bg-blue-600 active:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed hover:shadow-neon disabled:hover:shadow-none"
-          whileHover={selectedAnswer ? { scale: 1.02 } : {}}
-          whileTap={selectedAnswer ? { scale: 0.98 } : {}}
-        >
-          SUBMIT ANSWER
-        </motion.button>
-
-        {/* Lifeline Buttons */}
-        <div className="grid grid-cols-2 gap-3">
-          <motion.button
-            onClick={() => {
-              if (lifelines.askAudience) {
-                hapticFeedback.medium()
-                soundManager.click()
-                onAskAudience()
-              }
-            }}
-            disabled={!lifelines.askAudience}
-            className="py-2 px-4 bg-purple-100 text-purple-800 rounded-lg font-semibold transition-all hover:bg-purple-200 active:bg-purple-300 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed hover:shadow-md disabled:hover:shadow-none"
-            whileHover={lifelines.askAudience ? { scale: 1.05 } : {}}
-            whileTap={lifelines.askAudience ? { scale: 0.95 } : {}}
+      {/* Lifelines */}
+      <div className="flex flex-wrap gap-3 justify-center">
+        {lifelines.fiftyFifty.available && (
+          <button
+            onClick={() => onUseLifeline('fiftyFifty')}
+            disabled={lifelines.fiftyFifty.used || isSubmitting}
+            className="px-4 py-2 bg-purple-600/80 hover:bg-purple-500 text-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-purple-400/30"
+          >
+            🎯 50/50
+          </button>
+        )}
+        {lifelines.askAudience.available && (
+          <button
+            onClick={() => onUseLifeline('askAudience')}
+            disabled={lifelines.askAudience.used || isSubmitting}
+            className="px-4 py-2 bg-blue-600/80 hover:bg-blue-500 text-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-blue-400/30"
           >
             📊 Ask Audience
-          </motion.button>
-          
-          <motion.button
-            onClick={() => {
-              if (lifelines.safetyNet && !safetyNetActive) {
-                hapticFeedback.medium()
-                soundManager.click()
-                onSafetyNet()
-              }
-            }}
-            disabled={!lifelines.safetyNet || safetyNetActive}
-            className="py-2 px-4 bg-green-100 text-green-800 rounded-lg font-semibold transition-all hover:bg-green-200 active:bg-green-300 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed hover:shadow-md disabled:hover:shadow-none"
-            whileHover={lifelines.safetyNet && !safetyNetActive ? { scale: 1.05 } : {}}
-            whileTap={lifelines.safetyNet && !safetyNetActive ? { scale: 0.95 } : {}}
+          </button>
+        )}
+        {lifelines.safetyNet.available && (
+          <button
+            onClick={() => onUseLifeline('safetyNet')}
+            disabled={lifelines.safetyNet.used || isSubmitting}
+            className="px-4 py-2 bg-green-600/80 hover:bg-green-500 text-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-green-400/30"
           >
             🛡️ Safety Net
-          </motion.button>
-        </div>
+          </button>
+        )}
+      </div>
 
-        {/* Pass Button */}
-        <motion.button
-          onClick={() => {
-            if (passesRemaining > 0) {
-              hapticFeedback.medium()
-              soundManager.click()
-              onPass()
-            }
-          }}
-          disabled={passesRemaining === 0}
-          className="w-full py-2 px-4 bg-gray-100 text-gray-800 rounded-lg font-semibold transition-all hover:bg-gray-200 active:bg-gray-300 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed hover:shadow-md disabled:hover:shadow-none"
-          whileHover={passesRemaining > 0 ? { scale: 1.02 } : {}}
-          whileTap={passesRemaining > 0 ? { scale: 0.98 } : {}}
+      {/* Submit and Pass Buttons */}
+      <div className="flex gap-4 justify-center">
+        <button
+          onClick={handleSubmit}
+          disabled={!selectedAnswer || isSubmitting}
+          className="px-8 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg disabled:shadow-none transform hover:scale-105 disabled:scale-100"
         >
-          ⏭️ PASS ({passesRemaining} remaining)
-        </motion.button>
+          Submit Answer
+        </button>
+        {passesRemaining > 0 && (
+          <button
+            onClick={handlePass}
+            disabled={isSubmitting}
+            className="px-8 py-3 bg-slate-600/80 hover:bg-slate-500 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-slate-400/30"
+          >
+            Pass ({passesRemaining} left)
+          </button>
+        )}
       </div>
     </div>
-  )
+  );
 }
