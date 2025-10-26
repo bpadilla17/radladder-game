@@ -1,4 +1,7 @@
 import React, { useState } from 'react'
+import { motion } from 'framer-motion'
+import hapticFeedback from '../../utils/hapticFeedback'
+import soundManager from '../../utils/soundManager'
 
 export default function QuestionDisplay({
   question,
@@ -14,7 +17,6 @@ export default function QuestionDisplay({
 }) {
   const [selectedAnswer, setSelectedAnswer] = useState(null)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
-  const [ripples, setRipples] = useState([])
 
   // Parse image URLs (could be comma-separated for multiple images)
   const imageUrls = question.image_url ? question.image_url.split(',').map(url => url.trim()) : []
@@ -22,44 +24,31 @@ export default function QuestionDisplay({
 
   const handleAnswerSelect = (answer) => {
     setSelectedAnswer(answer)
+    hapticFeedback.medium()
+    soundManager.click()
   }
 
   const handleSubmit = () => {
     if (selectedAnswer) {
+      hapticFeedback.heavy()
+      soundManager.click()
       onAnswer(selectedAnswer)
     }
   }
 
   const nextImage = () => {
     setCurrentImageIndex((prev) => (prev + 1) % imageUrls.length)
+    hapticFeedback.light()
   }
 
   const prevImage = () => {
     setCurrentImageIndex((prev) => (prev - 1 + imageUrls.length) % imageUrls.length)
+    hapticFeedback.light()
   }
 
-  // Ripple effect handler
-  const createRipple = (event, buttonId) => {
-    const button = event.currentTarget
-    const rect = button.getBoundingClientRect()
-    const size = Math.max(rect.width, rect.height)
-    const x = event.clientX - rect.left - size / 2
-    const y = event.clientY - rect.top - size / 2
-    
-    const newRipple = {
-      id: Date.now(),
-      x,
-      y,
-      size,
-      buttonId
-    }
-    
-    setRipples([...ripples, newRipple])
-    
-    // Remove ripple after animation
-    setTimeout(() => {
-      setRipples(current => current.filter(r => r.id !== newRipple.id))
-    }, 600)
+  const goToImage = (index) => {
+    setCurrentImageIndex(index)
+    hapticFeedback.light()
   }
 
   const timePercentage = (timeLeft / totalTime) * 100
@@ -74,11 +63,15 @@ export default function QuestionDisplay({
         </p>
       </div>
 
-      {/* Image Display with 450px max-height */}
+      {/* Image Display with Carousel Dots */}
       {imageUrls.length > 0 && (
         <div className="mb-4">
           <div className="relative bg-gray-100 rounded-lg overflow-hidden">
-            <img
+            <motion.img
+              key={currentImageIndex}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.3 }}
               src={imageUrls[currentImageIndex]}
               alt={`Case image ${currentImageIndex + 1}`}
               className="w-full h-auto object-contain"
@@ -110,23 +103,20 @@ export default function QuestionDisplay({
             )}
           </div>
           
-          {/* Image Thumbnails for Multiple Images */}
+          {/* CAROUSEL DOTS instead of thumbnails */}
           {hasMultipleImages && (
-            <div className="flex gap-2 mt-2 overflow-x-auto">
-              {imageUrls.map((url, index) => (
+            <div className="flex justify-center gap-2 mt-3">
+              {imageUrls.map((_, index) => (
                 <button
                   key={index}
-                  onClick={() => setCurrentImageIndex(index)}
-                  className={`flex-shrink-0 w-16 h-16 rounded border-2 overflow-hidden transition-all hover:scale-105 active:scale-95 ${
-                    currentImageIndex === index ? 'border-medical-blue' : 'border-gray-300'
+                  onClick={() => goToImage(index)}
+                  className={`transition-all ${
+                    currentImageIndex === index
+                      ? 'w-8 h-2 bg-neon-blue rounded-full'
+                      : 'w-2 h-2 bg-gray-300 rounded-full hover:bg-gray-400'
                   }`}
-                >
-                  <img
-                    src={url}
-                    alt={`Thumbnail ${index + 1}`}
-                    className="w-full h-full object-cover"
-                  />
-                </button>
+                  aria-label={`Go to image ${index + 1}`}
+                />
               ))}
             </div>
           )}
@@ -151,194 +141,102 @@ export default function QuestionDisplay({
           )}
         </div>
         <div className="w-full bg-gray-200 rounded-full h-2">
-          <div
-            className={`h-2 rounded-full transition-all ${isUrgent ? 'bg-error-red' : 'bg-medical-blue'}`}
+          <motion.div
+            className={`h-2 rounded-full transition-all ${isUrgent ? 'bg-error-red' : 'bg-neon-blue'}`}
             style={{ width: `${timePercentage}%` }}
+            animate={isUrgent ? { scale: [1, 1.05, 1] } : {}}
+            transition={isUrgent ? { repeat: Infinity, duration: 0.5 } : {}}
           />
         </div>
       </div>
 
-      {/* Answer Options with Ripple Effect */}
+      {/* Answer Options - ENHANCED SELECTION (selected highlighted, others dimmed) */}
       <div className="space-y-3 mb-6">
         {['A', 'B', 'C', 'D'].map(option => (
-          <button
+          <motion.button
             key={option}
-            onClick={(e) => {
-              createRipple(e, option)
-              handleAnswerSelect(option)
-            }}
+            onClick={() => handleAnswerSelect(option)}
             className={`w-full text-left p-4 rounded-lg border-2 transition-all relative overflow-hidden ${
               selectedAnswer === option
-                ? 'border-medical-blue bg-blue-50'
-                : 'border-gray-300 hover:border-medical-blue hover:bg-blue-50'
-            } hover:shadow-md active:scale-98`}
-            style={{ position: 'relative' }}
+                ? 'border-neon-blue bg-blue-50 shadow-glow-blue'
+                : selectedAnswer
+                ? 'border-gray-200 bg-gray-50 opacity-50'
+                : 'border-gray-300 hover:border-neon-blue hover:bg-blue-50'
+            } hover:shadow-md`}
+            whileHover={{ scale: selectedAnswer && selectedAnswer !== option ? 1 : 1.02 }}
+            whileTap={{ scale: 0.98 }}
           >
             <span className="font-bold mr-3">({option})</span>
             {question[`option_${option.toLowerCase()}`]}
-            
-            {/* Ripple Effect */}
-            {ripples
-              .filter(r => r.buttonId === option)
-              .map(ripple => (
-                <span
-                  key={ripple.id}
-                  className="absolute bg-medical-blue opacity-30 rounded-full animate-ripple pointer-events-none"
-                  style={{
-                    left: ripple.x,
-                    top: ripple.y,
-                    width: ripple.size,
-                    height: ripple.size,
-                  }}
-                />
-              ))}
-          </button>
+          </motion.button>
         ))}
       </div>
 
-      {/* Action Buttons with Ripple Effects */}
+      {/* Action Buttons */}
       <div className="space-y-3">
         {/* Submit Button */}
-        <button
-          onClick={(e) => {
-            if (selectedAnswer) {
-              createRipple(e, 'submit')
-              handleSubmit()
-            }
-          }}
+        <motion.button
+          onClick={handleSubmit}
           disabled={!selectedAnswer}
-          className="w-full bg-medical-blue text-white font-bold py-3 rounded-lg transition-all relative overflow-hidden hover:bg-blue-600 active:bg-blue-700 active:scale-98 disabled:bg-gray-300 disabled:cursor-not-allowed hover:shadow-lg disabled:hover:shadow-none"
+          className="w-full bg-neon-blue text-white font-bold py-3 rounded-lg transition-all relative overflow-hidden hover:bg-blue-600 active:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed hover:shadow-neon disabled:hover:shadow-none"
+          whileHover={selectedAnswer ? { scale: 1.02 } : {}}
+          whileTap={selectedAnswer ? { scale: 0.98 } : {}}
         >
           SUBMIT ANSWER
-          
-          {/* Ripple Effect */}
-          {ripples
-            .filter(r => r.buttonId === 'submit')
-            .map(ripple => (
-              <span
-                key={ripple.id}
-                className="absolute bg-white opacity-30 rounded-full animate-ripple pointer-events-none"
-                style={{
-                  left: ripple.x,
-                  top: ripple.y,
-                  width: ripple.size,
-                  height: ripple.size,
-                }}
-              />
-            ))}
-        </button>
+        </motion.button>
 
         {/* Lifeline Buttons */}
         <div className="grid grid-cols-2 gap-3">
-          <button
-            onClick={(e) => {
+          <motion.button
+            onClick={() => {
               if (lifelines.askAudience) {
-                createRipple(e, 'audience')
+                hapticFeedback.medium()
+                soundManager.click()
                 onAskAudience()
               }
             }}
             disabled={!lifelines.askAudience}
-            className="py-2 px-4 bg-purple-100 text-purple-800 rounded-lg font-semibold transition-all relative overflow-hidden hover:bg-purple-200 active:bg-purple-300 active:scale-98 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed hover:shadow-md disabled:hover:shadow-none"
+            className="py-2 px-4 bg-purple-100 text-purple-800 rounded-lg font-semibold transition-all hover:bg-purple-200 active:bg-purple-300 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed hover:shadow-md disabled:hover:shadow-none"
+            whileHover={lifelines.askAudience ? { scale: 1.05 } : {}}
+            whileTap={lifelines.askAudience ? { scale: 0.95 } : {}}
           >
             📊 Ask Audience
-            
-            {/* Ripple Effect */}
-            {ripples
-              .filter(r => r.buttonId === 'audience')
-              .map(ripple => (
-                <span
-                  key={ripple.id}
-                  className="absolute bg-purple-500 opacity-30 rounded-full animate-ripple pointer-events-none"
-                  style={{
-                    left: ripple.x,
-                    top: ripple.y,
-                    width: ripple.size,
-                    height: ripple.size,
-                  }}
-                />
-              ))}
-          </button>
+          </motion.button>
           
-          <button
-            onClick={(e) => {
+          <motion.button
+            onClick={() => {
               if (lifelines.safetyNet && !safetyNetActive) {
-                createRipple(e, 'safety')
+                hapticFeedback.medium()
+                soundManager.click()
                 onSafetyNet()
               }
             }}
             disabled={!lifelines.safetyNet || safetyNetActive}
-            className="py-2 px-4 bg-green-100 text-green-800 rounded-lg font-semibold transition-all relative overflow-hidden hover:bg-green-200 active:bg-green-300 active:scale-98 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed hover:shadow-md disabled:hover:shadow-none"
+            className="py-2 px-4 bg-green-100 text-green-800 rounded-lg font-semibold transition-all hover:bg-green-200 active:bg-green-300 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed hover:shadow-md disabled:hover:shadow-none"
+            whileHover={lifelines.safetyNet && !safetyNetActive ? { scale: 1.05 } : {}}
+            whileTap={lifelines.safetyNet && !safetyNetActive ? { scale: 0.95 } : {}}
           >
             🛡️ Safety Net
-            
-            {/* Ripple Effect */}
-            {ripples
-              .filter(r => r.buttonId === 'safety')
-              .map(ripple => (
-                <span
-                  key={ripple.id}
-                  className="absolute bg-green-500 opacity-30 rounded-full animate-ripple pointer-events-none"
-                  style={{
-                    left: ripple.x,
-                    top: ripple.y,
-                    width: ripple.size,
-                    height: ripple.size,
-                  }}
-                />
-              ))}
-          </button>
+          </motion.button>
         </div>
 
         {/* Pass Button */}
-        <button
-          onClick={(e) => {
+        <motion.button
+          onClick={() => {
             if (passesRemaining > 0) {
-              createRipple(e, 'pass')
+              hapticFeedback.medium()
+              soundManager.click()
               onPass()
             }
           }}
           disabled={passesRemaining === 0}
-          className="w-full py-2 px-4 bg-gray-100 text-gray-800 rounded-lg font-semibold transition-all relative overflow-hidden hover:bg-gray-200 active:bg-gray-300 active:scale-98 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed hover:shadow-md disabled:hover:shadow-none"
+          className="w-full py-2 px-4 bg-gray-100 text-gray-800 rounded-lg font-semibold transition-all hover:bg-gray-200 active:bg-gray-300 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed hover:shadow-md disabled:hover:shadow-none"
+          whileHover={passesRemaining > 0 ? { scale: 1.02 } : {}}
+          whileTap={passesRemaining > 0 ? { scale: 0.98 } : {}}
         >
           ⏭️ PASS ({passesRemaining} remaining)
-          
-          {/* Ripple Effect */}
-          {ripples
-            .filter(r => r.buttonId === 'pass')
-            .map(ripple => (
-              <span
-                key={ripple.id}
-                className="absolute bg-gray-500 opacity-30 rounded-full animate-ripple pointer-events-none"
-                style={{
-                  left: ripple.x,
-                  top: ripple.y,
-                  width: ripple.size,
-                  height: ripple.size,
-                }}
-              />
-            ))}
-        </button>
+        </motion.button>
       </div>
-
-      {/* Add ripple animation styles */}
-      <style jsx>{`
-        @keyframes ripple {
-          from {
-            transform: scale(0);
-            opacity: 0.5;
-          }
-          to {
-            transform: scale(4);
-            opacity: 0;
-          }
-        }
-        .animate-ripple {
-          animation: ripple 0.6s ease-out;
-        }
-        .active\\:scale-98:active {
-          transform: scale(0.98);
-        }
-      `}</style>
     </div>
   )
 }
