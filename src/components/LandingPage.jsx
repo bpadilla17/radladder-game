@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { triggerHaptic } from '../utils/hapticFeedback';
 
 export default function LandingPage({ onStartGame }) {
   const [darkMode, setDarkMode] = useState(() => {
@@ -7,6 +6,18 @@ export default function LandingPage({ onStartGame }) {
     const saved = localStorage.getItem('radladder-dark-mode');
     return saved ? JSON.parse(saved) : true;
   });
+
+  // Simple haptic feedback function (built-in)
+  const triggerHaptic = (intensity = 'medium') => {
+    if ('vibrate' in navigator) {
+      const patterns = {
+        light: 10,
+        medium: 20,
+        heavy: 50
+      };
+      navigator.vibrate(patterns[intensity] || 20);
+    }
+  };
 
   // Apply theme to document
   useEffect(() => {
