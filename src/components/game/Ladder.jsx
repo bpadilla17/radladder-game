@@ -1,88 +1,151 @@
-import { motion } from 'framer-motion'
-import { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 
-export default function Ladder({ currentRung, totalRungs = 10 }) {
-  const [darkMode, setDarkMode] = useState(false)
+export default function Ladder({ currentRung, passesRemaining, lifelines, safetyNetActive }) {
+  const [showingEasterEgg, setShowingEasterEgg] = useState(null)
+  const rungs = [10, 9, 8, 7, 6, 5, 4, 3, 2, 1]
+  
+  const getRungLabel = (rung) => {
+    if (rung === 10) return '🏆 Prometheus Lionhart'
+    if (rung === 9) return '🎩 Seasoned Attending'
+    if (rung === 8) return '🆕 New Attending'
+    if (rung === 7) return '💰 R4'
+    if (rung === 6) return '🤓 R3 - Core Studying'
+    if (rung === 5) return '😰 R2 - Valley of Despair'
+    if (rung === 4) return '🤡 R1 - Peak Mt. Stupid'
+    if (rung === 3) return '📞 R1 - Starting Call'
+    if (rung === 2) return '😵 R1 - First Month'
+    return '👶 R1 - Day 1'
+  }
 
-  useEffect(() => {
-    const isDark = document.documentElement.classList.contains('dark')
-    setDarkMode(isDark)
+  const getRungEmoji = (rung) => {
+    if (rung === 10) return '🏆'
+    if (rung === 9) return '🎩'
+    if (rung === 8) return '🆕'
+    if (rung === 7) return '💰'
+    if (rung === 6) return '🤓'
+    if (rung === 5) return '😰'
+    if (rung === 4) return '🤡'
+    if (rung === 3) return '📞'
+    if (rung === 2) return '😵'
+    return '👶'
+  }
 
-    const observer = new MutationObserver(() => {
-      const isDark = document.documentElement.classList.contains('dark')
-      setDarkMode(isDark)
-    })
+  const getRungTagline = (rung) => {
+    const taglines = {
+      1: "What's a sagi?",
+      2: "Normal? Never heard of her",
+      3: "Ileitis or appy? Surgeon's problem now",
+      4: "I can read this better than some attendings (also calls trauma for nutrient vessel)",
+      5: "Valley of Despair: Missing PEs while worried about sagis",
+      6: "Ackchyually, it's Gorham-Stout disease",
+      7: "$ide hu$tle $ea$on",
+      8: "Let me ask my atten—",
+      9: "The fool doth think he is wise, but the wise man knows himself to be a fool.",
+      10: "You've transcended mortal radiology"
+    }
+    return taglines[rung]
+  }
 
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ['class'],
-    })
+  const handleEmojiClick = (rung) => {
+    // Ignore clicks if already showing an easter egg (cooldown option B)
+    if (showingEasterEgg !== null) return
 
-    return () => observer.disconnect()
-  }, [])
-
-  const rungs = [
-    { level: 10, label: "🏆 Prometheus Lionhart", desc: "God of Radiology" },
-    { level: 9, label: "👑 Epic Scanmaster", desc: "Legendary Status" },
-    { level: 8, label: "🔥 Chief Resident", desc: "Near Perfection" },
-    { level: 7, label: "⚡ Senior Resident", desc: "Expert Level" },
-    { level: 6, label: "🌟 Mid-Level Resident", desc: "Solid Foundation" },
-    { level: 5, label: "⭐ Standard R1", desc: "Average Resident" },
-    { level: 4, label: "📚 Learning Mode", desc: "Building Skills" },
-    { level: 3, label: "🔰 Novice Reader", desc: "Early Training" },
-    { level: 2, label: "🌱 Medical Student", desc: "Just Starting" },
-    { level: 1, label: "👶 Intern", desc: "Beginner" },
-  ]
-
-  const getRungColor = (rung, isCurrent) => {
-    if (!isCurrent && darkMode) return 'bg-slate-700/50 text-slate-400'
-    if (!isCurrent && !darkMode) return 'bg-gray-100 text-gray-500'
+    setShowingEasterEgg(rung)
     
-    if (rung === 10) return darkMode ? 'bg-gradient-to-r from-yellow-400 to-orange-500 text-slate-900' : 'bg-gradient-to-r from-yellow-300 to-orange-400 text-slate-900'
-    if (rung >= 8) return darkMode ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white' : 'bg-gradient-to-r from-purple-400 to-pink-400 text-white'
-    if (rung >= 6) return darkMode ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white' : 'bg-gradient-to-r from-blue-400 to-cyan-400 text-white'
-    if (rung >= 4) return darkMode ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white' : 'bg-gradient-to-r from-green-400 to-emerald-400 text-white'
-    return darkMode ? 'bg-gradient-to-r from-slate-600 to-slate-500 text-white' : 'bg-gradient-to-r from-gray-400 to-gray-500 text-white'
+    // Auto-dismiss after 3 seconds
+    setTimeout(() => {
+      setShowingEasterEgg(null)
+    }, 3000)
+  }
+
+  const getRungColor = (rung) => {
+    if (rung === currentRung) return 'bg-medical-blue text-white'
+    if (rung === 5) return 'bg-yellow-100 text-gray-700'
+    if (rung > currentRung) return 'bg-gray-100 text-gray-400'
+    return 'bg-gray-50 text-gray-500'
   }
 
   return (
-    <div className={`p-4 rounded-lg ${darkMode ? 'bg-slate-800/50' : 'bg-white/50'} backdrop-blur`}>
-      <h3 className={`text-lg font-bold mb-3 ${darkMode ? 'text-cyan-400' : 'text-blue-600'}`}>
-        Your Progress
-      </h3>
+    <div className="bg-white rounded-lg shadow-lg p-4">
+      <h2 className="text-xl font-bold text-gray-800 mb-4 text-center">YOUR LADDER</h2>
       
-      <div className="space-y-2">
-        {rungs.map((rung) => (
-          <motion.div
-            key={rung.level}
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: (10 - rung.level) * 0.05 }}
-            className={`rung-label ${getRungColor(rung.level, currentRung === rung.level)} ${
-              currentRung === rung.level ? 'ring-2 ring-offset-2 ' + (darkMode ? 'ring-cyan-400 ring-offset-slate-900' : 'ring-blue-500 ring-offset-white') : ''
-            }`}
+      {/* Ladder Rungs */}
+      <div className="space-y-2 mb-6">
+        {rungs.map(rung => (
+          <div
+            key={rung}
+            className={`flex items-center justify-between p-3 rounded-lg transition-colors ${getRungColor(rung)} relative`}
           >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="font-bold">R{rung.level}</span>
-                <span className="text-sm">{rung.label}</span>
+            <div className="flex items-center gap-2">
+              <span className="font-semibold">Rung {rung}</span>
+              {/* Clickable Emoji with Easter Egg */}
+              <span 
+                onClick={() => handleEmojiClick(rung)}
+                className="text-lg cursor-pointer hover:scale-110 transition-transform"
+                style={{ cursor: 'pointer' }}
+              >
+                {getRungEmoji(rung)}
+              </span>
+            </div>
+            <span className="text-sm">{getRungLabel(rung).replace(/^[^\s]+\s/, '')}</span>
+            {currentRung === rung && <span className="text-lg">👤</span>}
+            
+            {/* Easter Egg Popup */}
+            {showingEasterEgg === rung && (
+              <div 
+                className="absolute left-0 right-0 top-full mt-2 bg-gray-800 text-white text-xs p-2 rounded shadow-lg z-10 animate-fadeIn"
+                style={{
+                  animation: 'fadeIn 0.3s ease-in-out'
+                }}
+              >
+                {getRungTagline(rung)}
               </div>
-              {currentRung === rung.level && (
-                <motion.span
-                  animate={{ scale: [1, 1.2, 1] }}
-                  transition={{ duration: 1, repeat: Infinity }}
-                  className="text-lg"
-                >
-                  ◀
-                </motion.span>
-              )}
-            </div>
-            <div className="text-xs opacity-75 mt-0.5 ml-8">
-              {rung.desc}
-            </div>
-          </motion.div>
+            )}
+          </div>
         ))}
       </div>
+
+      {/* Lifelines Section */}
+      <div className="border-t pt-4">
+        <h3 className="font-bold text-gray-800 mb-2">Lifelines:</h3>
+        <div className="space-y-2">
+          <div className={`flex items-center gap-2 ${lifelines.askAudience ? 'text-medical-blue' : 'text-gray-400 line-through'}`}>
+            <span>📊</span>
+            <span className="text-sm">Ask Audience</span>
+          </div>
+          <div className={`flex items-center gap-2 ${lifelines.safetyNet ? 'text-medical-blue' : 'text-gray-400 line-through'}`}>
+            <span>🛡️</span>
+            <span className="text-sm">Safety Net</span>
+            {safetyNetActive && <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">ACTIVE</span>}
+          </div>
+        </div>
+      </div>
+
+      {/* Passes Section */}
+      <div className="border-t pt-4 mt-4">
+        <h3 className="font-bold text-gray-800 mb-2">Passes:</h3>
+        <div className="flex gap-2">
+          {[...Array(2)].map((_, i) => (
+            <span key={i} className={`text-2xl ${i < passesRemaining ? '' : 'opacity-30'}`}>
+              ⏭️
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* Add fadeIn animation styles */}
+      <style jsx>{`
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
     </div>
   )
 }
